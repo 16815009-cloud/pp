@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ภารกิจพิชิตระบบทางเทคโนโลยี</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;padding:16px;min-height:100vh;
+  font-family:Tahoma,system-ui,sans-serif;color:#20304c;
+  background:linear-gradient(135deg,#b8f0ff,#d9caff,#ffd9ed)
+}
+main{
+  max-width:850px;margin:auto;padding:24px;
+  background:#ffffffed;border:3px solid white;border-radius:25px;
+  box-shadow:0 15px 40px #5645a333
+}
+h1,h2{text-align:center;color:#6548d7}
+h1{font-size:clamp(25px,5vw,38px)}
+p{text-align:center;line-height:1.7}
+.panel{background:#f5f2ff;border-radius:18px;padding:18px;margin:16px 0}
+input{
+  width:100%;padding:13px;border:2px solid #d2c8ff;
+  border-radius:12px;font-size:17px;margin:8px 0 14px
+}
+button{
+  font:inherit;font-weight:bold;cursor:pointer;border:0;
+  border-radius:13px;padding:13px 16px
+}
+button:disabled{cursor:default;opacity:.7}
+.primary{background:#7456e8;color:white;width:100%;font-size:18px}
+.secondary{background:#e8e2ff;color:#543bb6}
+.categories{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin:20px 0
+}
+.category{
+  min-height:130px;background:#fff;border:2px solid #e0d9ff;
+  box-shadow:0 5px 14px #5944a315;font-size:17px
+}
+.category:hover{border-color:#8268ed;transform:translateY(-2px)}
+.emoji{display:block;font-size:40px;margin-bottom:8px}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.answer{
+  background:white;border:2px solid #e1def0;text-align:left;
+  min-height:58px;color:#26334e
+}
+.answer.correct{background:#d8f8e5;border-color:#22a568}
+.answer.wrong{background:#ffe0e7;border-color:#e15b75}
+.status{text-align:center;min-height:42px;font-weight:bold;line-height:1.6;margin:15px 0}
+.hidden{display:none}
+.bar{height:12px;background:#e7e4f3;border-radius:20px;overflow:hidden;margin:15px 0}
+.bar div{height:100%;width:0;background:linear-gradient(90deg,#5acfe9,#8761ed,#ff79b8);transition:width .3s}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px;align-items:center;justify-content:space-between}
+.row button{flex:1}
+.score{text-align:center;font-size:42px;font-weight:bold;color:#6548d7}
+.timer{
+  font-size:22px;font-weight:bold;text-align:center;
+  padding:10px 16px;border-radius:14px;background:#e3f7ff;color:#146b9a
+}
+.timer.warning{background:#fff0d2;color:#ad6500}
+.timer.danger{background:#ffe0e7;color:#c3264b;animation:pulse .7s infinite alternate}
+@keyframes pulse{to{transform:scale(1.04)}}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px 5px;text-align:center;border-bottom:1px solid #ddd}
+th{background:#e8e2ff}
+.small{font-size:13px;color:#69748a}
+@media(max-width:520px){main{padding:15px}.answers{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <!-- หน้าเริ่มเกม -->
+  <section id="welcome">
+    <h1>🤖 ภารกิจพิชิตระบบทางเทคโนโลยี ✨</h1>
+    <p>ตอบคำถามเกี่ยวกับระบบทางเทคโนโลยี สะสมคะแนนและพิชิตอันดับ!</p>
+    <div class="panel">
+      <label for="player"><b>ชื่อผู้เล่น</b></label>
+      <input id="player" maxlength="30" placeholder="พิมพ์ชื่อของคุณ">
+      <p class="small">หนึ่งรอบเลือกได้ 1 หมวด มี 4 คำถาม ข้อละ 30 วินาที คะแนนเต็ม 400 คะแนน</p>
+      <button class="primary" onclick="begin()">เริ่มเล่น 🚀</button>
+    </div>
+    <div class="row">
+      <button class="secondary" onclick="showRanks()">🏆 ตารางคะแนน Top 3</button>
+      <button class="secondary" onclick="toggleSound()" id="soundBtn">🔊 เปิดเสียง</button>
+    </div>
+  </section>
+
+  <!-- หน้าเลือกหมวด -->
+  <section id="choose" class="hidden">
+    <h2>🗺️ เลือก 1 หมวดภารกิจ</h2>
+    <p>เมื่อเลือกแล้วจะตอบคำถามในหมวดนั้นให้ครบ 4 ข้อ</p>
+    <div class="categories">
+      <button class="category" onclick="chooseCategory('rice')"><span class="emoji">🍚</span>หม้อหุงข้าว</button>
+      <button class="category" onclick="chooseCategory('phone')"><span class="emoji">📱</span>โทรศัพท์มือถือ</button>
+      <button class="category" onclick="chooseCategory('car')"><span class="emoji">🚙</span>รถบังคับ</button>
+      <button class="category" onclick="chooseCategory('toaster')"><span class="emoji">🍞</span>เครื่องปิ้งขนมปัง</button>
+    </div>
+    <button class="secondary" onclick="go('welcome')">กลับหน้าแรก</button>
+  </section>
+
+  <!-- หน้าเล่นเกม -->
+  <section id="game" class="hidden">
+    <div class="row">
+      <b id="categoryName"></b>
+      <b id="scoreNow">⭐ 0 คะแนน</b>
+    </div>
+
+    <div class="row">
+      <span id="questionCount">คำถามที่ 1 / 4</span>
+      <div id="timer" class="timer">⏱️ 30 วินาที</div>
+    </div>
+    <div class="bar"><div id="timeBar"></div></div>
+
+    <div class="panel">
+      <h2 id="question"></h2>
+      <div class="answers" id="answers"></div>
+      <div class="status" id="feedback"></div>
+      <button class="primary hidden" id="nextBtn" onclick="nextQuestion()">คำถามถัดไป ➜</button>
+    </div>
+  </section>
+
+  <!-- หน้าสรุปคะแนน -->
+  <section id="finish" class="hidden">
+    <h1>🏆 ภารกิจสำเร็จ!</h1>
+    <p id="resultName"></p>
+    <div class="panel">
+      <p>คะแนนที่ทำได้</p>
+      <div class="score" id="finalScore">0 / 400</div>
+      <p id="resultText"></p>
+    </div>
+    <button class="primary" onclick="saveScore()" id="saveBtn">บันทึกคะแนน 📣</button>
+    <p class="status" id="saveMessage"></p>
+    <div class="row">
+      <button class="secondary" onclick="showRanks()">ดูอันดับ Top 3 🏆</button>
+      <button class="secondary" onclick="go('choose')">เล่นหมวดใหม่</button>
+      <button class="secondary" onclick="go('welcome')">หน้าแรก</button>
+    </div>
+  </section>
+
+  <!-- ตารางคะแนน -->
+  <section id="ranks" class="hidden">
+    <h2>🏆 ตารางคะแนน Top 3</h2>
+    <div class="panel" id="rankContent"></div>
+    <p class="small">คะแนนเก็บไว้ในเบราว์เซอร์เครื่องนี้ หากต้องการรวมคะแนนจากทุกเครื่อง ต้องเชื่อมต่อฐานข้อมูลออนไลน์</p>
+    <button class="secondary" onclick="go('welcome')">กลับหน้าแรก</button>
+  </section>
+</main>
+
+<script>
+const TIME_LIMIT = 30; // เวลาต่อคำถาม หน่วยวินาที
+
+const bank = {
+  rice: {
+    name:"🍚 หม้อหุงข้าว",
+    questions:[
+      {
+        q:"สิ่งใดที่เป็นตัวป้อนของระบบหม้อหุงข้าว",
+        a:["ข้าวสาร น้ำ และพลังงานไฟฟ้า","ข้าวสุกและไอน้ำ","ความร้อนและข้าวสุก","หม้อชั้นในและฝาหม้อ"],
+        c:0,why:"ตัวป้อนคือสิ่งที่ใส่เข้าสู่ระบบ เช่น ข้าวสาร น้ำ และพลังงานไฟฟ้า"
+      },
+      {
+        q:"กระบวนการทำงานของหม้อหุงข้าวเป็นอย่างไร",
+        a:["แสดงไฟสถานะแล้วหยุดทำงานทันที","รับไฟฟ้าแล้วให้ความร้อนแก่ข้าวและน้ำจนข้าวสุก","เปลี่ยนข้าวสุกกลับเป็นข้าวสาร","ปล่อยไอน้ำออกโดยไม่ใช้พลังงาน"],
+        c:1,why:"หม้อใช้พลังงานไฟฟ้าสร้างความร้อนเพื่อทำให้ข้าวและน้ำสุก"
+      },
+      {
+        q:"ข้อมูลย้อนกลับของหม้อหุงข้าวมีหน้าที่อย่างไร",
+        a:["ทำให้ผู้ใช้เติมข้าวสารอัตโนมัติ","เป็นอาหารที่ได้จากหม้อ","แจ้งสถานะการทำงาน เช่น หุงหรืออุ่น","ทำให้หม้อใช้ไฟฟ้าเพิ่มขึ้น"],
+        c:2,why:"ไฟแสดงสถานะช่วยให้ผู้ใช้ทราบว่าหม้อกำลังทำงานหรืออุ่นข้าว"
+      },
+      {
+        q:"หากระบบควบคุมอุณหภูมิทำงานผิดปกติจะเกิดอะไรขึ้น",
+        a:["หม้อจะทำงานได้ดีขึ้นเสมอ","ข้าวจะสุกทันทีโดยไม่ใช้ไฟ","หม้อจะเปลี่ยนเป็นโทรศัพท์","ข้าวอาจไม่สุกหรือไหม้ และอาจเกิดอันตราย"],
+        c:3,why:"ระบบควบคุมอุณหภูมิที่ผิดปกติอาจทำให้ความร้อนไม่เหมาะสม"
+      }
+    ]
+  },
+
+  phone: {
+    name:"📱 โทรศัพท์มือถือ",
+    questions:[
+      {
+        q:"เมื่อเราพิมพ์ข้อความลงในโทรศัพท์สิ่งใดเป็นตัวป้อนของระบบ",
+        a:["เสียงแจ้งเตือน","ข้อความที่พิมพ์และคำสั่งจากผู้ใช้","ข้อความที่ผู้รับได้รับแล้ว","แบตเตอรี่ที่กำลังชาร์จ"],
+        c:1,why:"ข้อความและคำสั่งจากผู้ใช้เป็นข้อมูลที่ป้อนเข้าสู่โทรศัพท์"
+      },
+      {
+        q:"โทรศัพท์มือถือมีกระบวนการทำงานอย่างไรเมื่อเรากดส่งข้อความ",
+        a:["ลบข้อความออกจากเครื่องทันที","ปิดหน้าจอแล้วหยุดทำงาน","ประมวลผลข้อความและส่งผ่านเครือข่ายไปยังผู้รับ","เปลี่ยนข้อความเป็นเสียงเพลง"],
+        c:2,why:"โทรศัพท์ประมวลผลคำสั่งและส่งข้อมูลผ่านเครือข่าย"
+      },
+      {
+        q:"ผลผลิตของระบบเมื่อส่งข้อความสำเร็จคืออะไร",
+        a:["ข้อความถูกส่งไปถึงผู้รับ","ปุ่มส่งบนหน้าจอ","ข้อความที่ยังไม่ได้พิมพ์","นิ้วมือที่แตะหน้าจอ"],
+        c:0,why:"ข้อความที่ส่งถึงผู้รับคือผลผลิตของระบบ"
+      },
+      {
+        q:"ข้อมูลย้อนกลับของโทรศัพท์มือถือคืออะไร",
+        a:["สีของตัวเครื่อง","ขนาดหน้าจอ","ยี่ห้อโทรศัพท์","การแจ้งสถานะส่งแล้วหรือส่งไม่สำเร็จ"],
+        c:3,why:"สถานะการส่งช่วยให้ผู้ใช้ทราบผลการทำงาน"
+      }
+    ]
+  },
+
+  car: {
+    name:"🚙 รถบังคับ",
+    questions:[
+      {
+        q:"ตัวป้อนของระบบรถบังคับมีอะไรบ้าง",
+        a:["คำสั่งจากรีโมตและพลังงานจากแบตเตอรี่","รถที่เคลื่อนที่ไปข้างหน้าเท่านั้น","เสียงจากล้อรถ","สิ่งกีดขวางข้างหน้าเท่านั้น"],
+        c:0,why:"คำสั่งควบคุมและพลังงานจากแบตเตอรี่เป็นตัวป้อน"
+      },
+      {
+        q:"รถบังคับมีกระบวนการทำงานอย่างไรเมื่อเรากดปุ่มให้รถบังคับเคลื่อนที่ไปข้างหน้า",
+        a:["ล้อหยุดหมุนทันที","รับคำสั่งจากรีโมตแล้ววงจรควบคุมสั่งมอเตอร์ให้หมุนล้อ","ส่งเสียงแทนการเคลื่อนที่","แสดงภาพบนหน้าจอ"],
+        c:1,why:"วงจรรับคำสั่งแล้วควบคุมมอเตอร์ให้หมุนล้อ"
+      },
+      {
+        q:"ผลผลิตของระบบรถบังคับคืออะไร",
+        a:["แบตเตอรี่ที่ชาร์จไฟ","คำสั่งที่กดบนรีโมต","รถเคลื่อนที่ตามทิศทางที่สั่ง","วงจรควบคุมภายในรถ"],
+        c:2,why:"การเคลื่อนที่ตามคำสั่งเป็นผลลัพธ์ของระบบ"
+      },
+      {
+        q:"หากแบตเตอรี่หมดรถบังคับจะเป็นอย่างไร",
+        a:["วิ่งได้เร็วขึ้นเอง","รับคำสั่งได้โดยไม่ใช้ไฟฟ้า","ทำงานได้เหมือนเดิมทุกอย่าง","มอเตอร์อาจไม่ทำงานหรือรถเคลื่อนที่ไม่ได้"],
+        c:3,why:"เมื่อไม่มีพลังงานไฟฟ้า มอเตอร์ก็ไม่สามารถขับเคลื่อนรถได้"
+      }
+    ]
+  },
+
+  toaster: {
+    name:"🍞 เครื่องปิ้งขนมปัง",
+    questions:[
+      {
+        q:"ตัวป้อนของระบบเครื่องปิ้งขนมปังคืออะไร",
+        a:["ขนมปังที่ปิ้งเสร็จแล้วเท่านั้น","ความร้อนที่ออกจากเครื่องเท่านั้น","เสียงดีดของเครื่อง","ขนมปัง การตั้งเวลา/ระดับความร้อน และพลังงานไฟฟ้า"],
+        c:3,why:"ขนมปัง ค่าที่ผู้ใช้ตั้ง และไฟฟ้าเป็นตัวป้อนของระบบ"
+      },
+      {
+        q:"กระบวนการทำงานของเครื่องปิ้งขนมปังเป็นอย่างไร",
+        a:["ทำให้ขนมปังเย็นลงทันที","รับพลังงานไฟฟ้าแล้วเปลี่ยนเป็นความร้อนเพื่อปิ้งขนมปัง","ส่งขนมปังออกโดยไม่ให้ความร้อน","เก็บขนมปังไว้โดยไม่ทำงาน"],
+        c:1,why:"เครื่องใช้พลังงานไฟฟ้าสร้างความร้อนเพื่อปิ้งขนมปัง"
+      },
+      {
+        q:"ผลผลิตของระบบคืออะไร",
+        a:["ขนมปังดิบก่อนใส่เครื่อง","ปุ่มตั้งเวลา","ขนมปังที่ผ่านการปิ้งแล้ว","พลังงานไฟฟ้าที่จ่ายเข้าเครื่อง"],
+        c:2,why:"ขนมปังที่ปิ้งแล้วคือผลลัพธ์จากการทำงาน"
+      },
+      {
+        q:"ระบบใดช่วยให้เครื่องปิ้งขนมปังหยุดเมื่อครบเวลาแล้ว",
+        a:["ระบบลำโพง","ระบบทำความเย็นของห้อง","ระบบรับสัญญาณโทรศัพท์","ระบบตั้งเวลาและกลไกควบคุม/ตัดการทำงาน"],
+        c:3,why:"ตัวตั้งเวลาและกลไกควบคุมช่วยหยุดให้ความร้อนเมื่อครบเวลา"
+      }
+    ]
+  }
+};
+
+let player = "";
+let category = "";
+let index = 0;
+let score = 0;
+let locked = false;
+let soundOn = false;
+let timeLeft = TIME_LIMIT;
+let timerInterval = null;
+
+function go(id){
+  stopTimer();
+  ["welcome","choose","game","finish","ranks"].forEach(section=>{
+    document.getElementById(section).classList.toggle("hidden",section!==id);
+  });
+}
+
+function begin(){
+  const name = document.getElementById("player").value.trim();
+  if(!name){
+    alert("กรุณากรอกชื่อก่อนเริ่มเล่น");
+    return;
+  }
+  player = name.slice(0,30);
+  go("choose");
+}
+
+function chooseCategory(key){
+  category = key;
+  index = 0;
+  score = 0;
+  locked = false;
+  document.getElementById("categoryName").textContent = bank[key].name;
+  renderQuestion();
+  go("game");
+}
+
+function renderQuestion(){
+  stopTimer();
+  locked = false;
+  timeLeft = TIME_LIMIT;
+
+  const item = bank[category].questions[index];
+  document.getElementById("questionCount").textContent = `คำถามที่ ${index+1} / 4`;
+  document.getElementById("question").textContent = item.q;
+  document.getElementById("scoreNow").textContent = `⭐ ${score} คะแนน`;
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("nextBtn").classList.add("hidden");
+
+  const answersBox = document.getElementById("answers");
+  answersBox.innerHTML = "";
+
+  item.a.forEach((answer,i)=>{
+    const button = document.createElement("button");
+    button.className = "answer";
+    button.textContent = ["ก. ","ข. ","ค. ","ง. "][i] + answer;
+    button.onclick = ()=>checkAnswer(i,button);
+    answersBox.appendChild(button);
+  });
+
+  updateTimerDisplay();
+  startTimer();
+}
+
+function startTimer(){
+  stopTimer();
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    if(timeLeft < 0) timeLeft = 0;
+
+    updateTimerDisplay();
+
+    if(timeLeft <= 0){
+      timeIsUp();
+    }
+  },1000);
+}
+
+function stopTimer(){
+  if(timerInterval !== null){
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function updateTimerDisplay(){
+  const timer = document.getElementById("timer");
+  timer.textContent = `⏱️ ${timeLeft} วินาที`;
+  timer.classList.remove("warning","danger");
+
+  if(timeLeft <= 5){
+    timer.classList.add("danger");
+  }else if(timeLeft <= 15){
+    timer.classList.add("warning");
+  }
+
+  const percent = (timeLeft / TIME_LIMIT) * 100;
+  document.getElementById("timeBar").style.width = percent + "%";
+}
+
+function checkAnswer(choice,button){
+  if(locked) return;
+
+  locked = true;
+  stopTimer();
+
+  const item = bank[category].questions[index];
+  const answerButtons = document.querySelectorAll(".answer");
+
+  answerButtons.forEach((b,i)=>{
+    b.disabled = true;
+    if(i === item.c) b.classList.add("correct");
+  });
+
+  if(choice === item.c){
+    // คะแนนแปรผันตามเวลาที่เหลือ: 30 วินาที = 100 คะแนน
+    const earned = Math.round((timeLeft / TIME_LIMIT) * 100);
+    score += earned;
+    document.getElementById("feedback").textContent =
+      `ตอบถูก! ได้ ${earned} คะแนน 🌟 ${item.why}`;
+    playTone(700);
+  }else{
+    button.classList.add("wrong");
+    document.getElementById("feedback").textContent =
+      `ตอบผิด ได้ 0 คะแนน 💡 ${item.why}`;
+    playTone(230);
+  }
+
+  document.getElementById("scoreNow").textContent = `⭐ ${score} คะแนน`;
+  document.getElementById("nextBtn").textContent =
+    index === 3 ? "ดูผลคะแนน 🏆" : "คำถามถัดไป ➜";
+  document.getElementById("nextBtn").classList.remove("hidden");
+}
+
+function timeIsUp(){
+  if(locked) return;
+
+  locked = true;
+  stopTimer();
+
+  const item = bank[category].questions[index];
+  document.querySelectorAll(".answer").forEach((button,i)=>{
+    button.disabled = true;
+    if(i === item.c) button.classList.add("correct");
+  });
+
+  document.getElementById("feedback").textContent =
+    `หมดเวลา! ข้อนี้ได้ 0 คะแนน ⏰ ${item.why}`;
+  document.getElementById("nextBtn").textContent =
+    index === 3 ? "ดูผลคะแนน 🏆" : "คำถามถัดไป ➜";
+  document.getElementById("nextBtn").classList.remove("hidden");
+}
+
+function nextQuestion(){
+  if(!locked) return;
+
+  if(index < 3){
+    index++;
+    renderQuestion();
+  }else{
+    finishGame();
+  }
+}
+
+function finishGame(){
+  stopTimer();
+  document.getElementById("resultName").textContent =
+    player + " • " + bank[category].name;
+  document.getElementById("finalScore").textContent = score + " / 400";
+
+  document.getElementById("resultText").textContent =
+    score === 400 ? "สุดยอด! คุณตอบถูกทุกข้อและทำเวลาได้เต็มคะแนน 🎉" :
+    score >= 200 ? "ทำได้ดีมาก ภารกิจสำเร็จแล้ว! 🌟" :
+    "ขอบคุณที่ร่วมภารกิจ ลองเล่นอีกครั้งเพื่อฝึกฝน 💪";
+
+  document.getElementById("saveMessage").textContent = "";
+  const saveButton = document.getElementById("saveBtn");
+  saveButton.disabled = false;
+  saveButton.textContent = "บันทึกคะแนน 📣";
+  go("finish");
+}
+
+function getScores(){
+  try{
+    return JSON.parse(localStorage.getItem("techQuestScores") || "[]");
+  }catch(error){
+    return [];
+  }
+}
+
+function saveScore(){
+  const scores = getScores();
+  scores.push({
+    name:player,
+    category:bank[category].name,
+    score:score,
+    date:new Date().toLocaleString("th-TH")
+  });
+
+  localStorage.setItem("techQuestScores",JSON.stringify(scores));
+  document.getElementById("saveBtn").disabled = true;
+  document.getElementById("saveBtn").textContent = "บันทึกแล้ว ✓";
+  document.getElementById("saveMessage").textContent =
+    "บันทึกคะแนนในเครื่องนี้เรียบร้อยแล้ว";
+}
+
+function showRanks(){
+  const scores = getScores()
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,3);
+
+  const rankContent = document.getElementById("rankContent");
+
+  if(scores.length === 0){
+    rankContent.innerHTML = "<p>ยังไม่มีคะแนนที่บันทึกไว้</p>";
+  }else{
+    let html = "<table><tr><th>อันดับ</th><th>ชื่อ</th><th>หมวด</th><th>คะแนน</th></tr>";
+    const medals = ["🥇","🥈","🥉"];
+
+    scores.forEach((item,i)=>{
+      html += `<tr>
+        <td>${medals[i]}</td>
+        <td>${escapeHTML(item.name)}</td>
+        <td>${escapeHTML(item.category)}</td>
+        <td>${item.score}</td>
+      </tr>`;
+    });
+
+    rankContent.innerHTML = html + "</table>";
+  }
+
+  go("ranks");
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,char=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[char]));
+}
+
+function toggleSound(){
+  soundOn = !soundOn;
+  document.getElementById("soundBtn").textContent =
+    soundOn ? "🔇 ปิดเสียง" : "🔊 เปิดเสียง";
+
+  if(soundOn) playTone(600);
+}
+
+function playTone(frequency){
+  if(!soundOn) return;
+
+  try{
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.frequency.value = frequency;
+    gain.gain.value = 0.06;
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.18);
+    oscillator.onended = ()=>context.close();
+  }catch(error){
+    // หากเบราว์เซอร์ไม่รองรับเสียง เกมยังเล่นได้ตามปกติ
+  }
+}
+</script>
+</body>
+</html>
